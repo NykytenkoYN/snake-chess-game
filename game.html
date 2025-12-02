@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Chess Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .game-container {
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 36px;
+        }
+        .info {
+            color: white;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .board {
+            display: inline-grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 0;
+            border: 4px solid #333;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            background: white;
+        }
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            position: relative;
+        }
+        .square.light {
+            background-color: #f0d9b5;
+        }
+        .square.dark {
+            background-color: #b58863;
+        }
+        .square.snake {
+            background-color: #4CAF50;
+        }
+        .square.snake.light {
+            background-color: #66BB6A;
+        }
+        .square.snake.dark {
+            background-color: #4CAF50;
+        }
+        .square.head {
+            background-color: #2E7D32;
+        }
+        .square.head.light {
+            background-color: #43A047;
+        }
+        .square.head.dark {
+            background-color: #2E7D32;
+        }
+        .controls {
+            margin-top: 20px;
+            color: white;
+            font-size: 18px;
+        }
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            display: none;
+        }
+        .game-over.show {
+            display: block;
+        }
+        .game-over h2 {
+            margin: 0 0 20px 0;
+            font-size: 36px;
+            color: #333;
+        }
+        .game-over button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .game-over button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐍 Snake Chess 🐍</h1>
+        <div class="info">
+            <span>Length: <span id="length">1</span>/64</span> | 
+            <span>Pawns Eaten: <span id="score">0</span></span>
+        </div>
+        <div class="board" id="board"></div>
+        <div class="controls">
+            Use Arrow Keys to move the snake
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2 id="gameOverText">Game Over!</h2>
+        <p id="gameOverMessage"></p>
+        <button onclick="location.reload()">Play Again</button>
+        <button onclick="window.location.href='index.html'">Main Menu</button>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 8;
+        const INITIAL_SPEED = 200;
+        
+        let snake = [{row: 3, col: 3}];
+        let direction = {row: 0, col: 1};
+        let nextDirection = {row: 0, col: 1};
+        let pawn = null;
+        let gameLoop = null;
+        let gameActive = true;
+
+        const board = document.getElementById('board');
+        const lengthDisplay = document.getElementById('length');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverDiv = document.getElementById('gameOver');
+        const gameOverText = document.getElementById('gameOverText');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+
+        function createBoard() {
+            board.innerHTML = '';
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.id = `square-${row}-${col}`;
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        function getSquare(row, col) {
+            return document.getElementById(`square-${row}-${col}`);
+        }
+
+        function drawSnake() {
+            snake.forEach((segment, index) => {
+                const square = getSquare(segment.row, segment.col);
+                const isLight = (segment.row + segment.col) % 2 === 0;
+                if (index === 0) {
+                    square.className = `square ${isLight ? 'light' : 'dark'} head`;
+                } else {
+                    square.className = `square ${isLight ? 'light' : 'dark'} snake`;
+                }
+            });
+        }
+
+        function drawPawn() {
+            if (pawn) {
+                const square = getSquare(pawn.row, pawn.col);
+                square.textContent = '♟';
+            }
+        }
+
+        function spawnPawn() {
+            const emptySquares = [];
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const isSnake = snake.some(s => s.row === row && s.col === col);
+                    if (!isSnake) {
+                        emptySquares.push({row, col});
+                    }
+                }
+            }
+            
+            if (emptySquares.length > 0) {
+                pawn = emptySquares[Math.floor(Math.random() * emptySquares.length)];
+                drawPawn();
+            }
+        }
+
+        function moveSnake() {
+            if (!gameActive) return;
+
+            direction = nextDirection;
+
+            const head = snake[0];
+            const newHead = {
+                row: head.row + direction.row,
+                col: head.col + direction.col
+            };
+
+            if (newHead.row < 0 || newHead.row >= BOARD_SIZE || 
+                newHead.col < 0 || newHead.col >= BOARD_SIZE) {
+                endGame(false);
+                return;
+            }
+
+            if (snake.some(s => s.row === newHead.row && s.col === newHead.col)) {
+                endGame(false);
+                return;
+            }
+
+            snake.unshift(newHead);
+
+            if (pawn && newHead.row === pawn.row && newHead.col === pawn.col) {
+                pawn = null;
+                scoreDisplay.textContent = snake.length - 1;
+                lengthDisplay.textContent = snake.length;
+                
+                if (snake.length === 64) {
+                    endGame(true);
+                    return;
+                }
+                
+                spawnPawn();
+            } else {
+                snake.pop();
+            }
+
+            render();
+        }
+
+        function render() {
+            createBoard();
+            drawSnake();
+            drawPawn();
+        }
+
+        function endGame(won) {
+            gameActive = false;
+            clearInterval(gameLoop);
+            
+            if (won) {
+                gameOverText.textContent = '🎉 You Won! 🎉';
+                gameOverMessage.textContent = 'You filled the entire chess board!';
+            } else {
+                gameOverText.textContent = '💀 Game Over! 💀';
+                gameOverMessage.textContent = `You reached ${snake.length} squares out of 64.`;
+            }
+            
+            gameOverDiv.classList.add('show');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    if (direction.row === 0) {
+                        nextDirection = {row: -1, col: 0};
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    if (direction.row === 0) {
+                        nextDirection = {row: 1, col: 0};
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                    if (direction.col === 0) {
+                        nextDirection = {row: 0, col: -1};
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    if (direction.col === 0) {
+                        nextDirection = {row: 0, col: 1};
+                    }
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        createBoard();
+        drawSnake();
+        spawnPawn();
+        gameLoop = setInterval(moveSnake, INITIAL_SPEED);
+    </script>
+</body>
+</html>

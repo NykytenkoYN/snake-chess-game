@@ -12,8 +12,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            box-sizing: border-box;
         }
         .container {
             text-align: center;
@@ -21,6 +23,7 @@
             padding: 60px 80px;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
         }
         h1 {
             font-size: 48px;
@@ -49,6 +52,40 @@
         }
         .start-btn:active {
             transform: translateY(0);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 30px;
+            }
+            h1 {
+                font-size: 32px;
+            }
+            p {
+                font-size: 16px;
+                margin-bottom: 30px;
+            }
+            .start-btn {
+                padding: 15px 40px;
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            p {
+                font-size: 14px;
+            }
+            .start-btn {
+                padding: 12px 30px;
+                font-size: 18px;
+            }
         }
     </style>
 </head>
